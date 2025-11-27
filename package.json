@@ -4,8 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "tsc && vite build",
-    "start": "node --loader ts-node/esm src/hello_world.ts"
+    "start": "node --import ts-node/esm src/hello_world.ts"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
