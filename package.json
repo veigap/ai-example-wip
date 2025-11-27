@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc && vite build",
-    "start": "node --loader ts-node/esm src/main.ts"
+    "start": "node --loader ts-node/esm src/hello_world.ts"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
