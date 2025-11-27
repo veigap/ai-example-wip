@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 
 /**
@@ -19,6 +19,50 @@ export function setupApiKeyListener() {
 
       win.window.addEventListener('message', async (event: MessageEvent) => {
         console.log(`[listen-api-key] 📨 Received message from origin: ${event.origin}`);
+        
+        // Handle ping requests from parent (parent checking if we need the key)
+        if (event.data?.type === 'PING' && event.data.requestKey) {
+          console.log('[listen-api-key] 📥 Received PING from parent');
+          
+          // Check if we have a key in .env file that parent might not know about
+          const envPath = join(process.cwd(), 'env', '.env');
+          if (existsSync(envPath)) {
+            try {
+              const envContent = readFileSync(envPath, 'utf-8');
+              const match = envContent.match(/OPENAI_API_KEY=(.+)/);
+              if (match && match[1]) {
+                const apiKey = match[1].trim();
+                console.log('[listen-api-key] 📤 Sending API key from .env to parent...');
+                if (win.window.parent && win.window.parent !== win.window) {
+                  win.window.parent.postMessage({
+                    type: 'SAVE_API_KEY',
+                    key: 'openai_api_key',
+                    value: apiKey
+                  }, '*');
+                  console.log('[listen-api-key] ✅ Sent API key to parent for localStorage storage');
+                }
+                return; // Don't request, we're sending it
+              }
+            } catch (error) {
+              // Continue to request
+            }
+          }
+          
+          // Request the API key from parent if we don't have one
+          console.log('[listen-api-key] 📤 Requesting API key from parent...');
+          if (win.window.parent && win.window.parent !== win.window) {
+            try {
+              win.window.parent.postMessage({
+                type: 'REQUEST_API_KEY'
+              }, '*');
+              console.log('[listen-api-key] 📤 Sent REQUEST_API_KEY to parent');
+            } catch (error: any) {
+              console.log(`[listen-api-key] ⚠️  Failed to request key: ${error.message}`);
+            }
+          }
+          return;
+        }
+        
         // Accept messages from any origin when embedded (you can restrict this in production)
         if (event.data?.type === 'SET_ENV_VAR' && event.data.key === 'OPENAI_API_KEY') {
           const apiKey = event.data.value;
@@ -47,6 +91,21 @@ export function setupApiKeyListener() {
 
             console.log('[listen-api-key] ✅ API key saved to env/.env file');
             console.log('[listen-api-key] 💡 Reload your code (Ctrl+C and run again) to use the new API key');
+            
+            // Also send confirmation back to parent so it knows we received it
+            // This helps ensure parent has it in localStorage
+            if (win.window.parent && win.window.parent !== win.window) {
+              try {
+                win.window.parent.postMessage({
+                  type: 'SAVE_API_KEY',
+                  key: 'openai_api_key',
+                  value: apiKey
+                }, '*');
+                console.log('[listen-api-key] 📤 Confirmed API key receipt to parent window');
+              } catch (error) {
+                // Silently fail
+              }
+            }
           } catch (error) {
             console.error('❌ Failed to save API key:', error);
           }
