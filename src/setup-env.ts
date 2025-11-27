@@ -1,6 +1,7 @@
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'fs';
 import { createInterface } from 'readline';
 import { join } from 'path';
+import OpenAI from 'openai';
 
 const API_KEY_URL = 'https://platform.openai.com/api-keys';
 
@@ -18,7 +19,41 @@ async function prompt(question: string): Promise<string> {
   });
 }
 
+async function testApiKey(apiKey: string): Promise<boolean> {
+  try {
+    const client = new OpenAI({
+      apiKey: apiKey.trim(),
+    });
+    await client.models.list();
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
 async function main() {
+  // Check if API key already exists and is valid
+  const envPath = join(process.cwd(), 'env', '.env');
+  if (existsSync(envPath)) {
+    try {
+      const envContent = readFileSync(envPath, 'utf-8');
+      const match = envContent.match(/OPENAI_API_KEY=(.+)/);
+      if (match && match[1]) {
+        const existingKey = match[1].trim();
+        console.log('\n🔍 Checking existing API key...');
+        const isValid = await testApiKey(existingKey);
+        if (isValid) {
+          console.log('✅ API key is already configured and valid!\n');
+          return;
+        } else {
+          console.log('⚠️  Existing API key is invalid. Please provide a new one.\n');
+        }
+      }
+    } catch (error) {
+      // If we can't read the file, proceed with setup
+    }
+  }
+
   console.log('\n🔑 OpenAI API Key Setup\n');
   console.log(`To get your API key, visit: ${API_KEY_URL}`);
   console.log('1. Sign in to your OpenAI account');
@@ -33,6 +68,56 @@ async function main() {
     process.exit(1);
   }
 
+  const trimmedKey = apiKey.trim();
+
+  // Test the API key by making a connection to OpenAI
+  console.log('\n🔍 Testing connection to OpenAI...');
+  try {
+    const client = new OpenAI({
+      apiKey: trimmedKey,
+    });
+
+    // Make a simple API call to verify the key works
+    await client.models.list();
+    console.log('✅ Connection successful! API key is valid.\n');
+  } catch (error: any) {
+    console.error('❌ Connection failed!');
+    if (error?.status === 401) {
+      console.error('   The API key is invalid or unauthorized.');
+    } else if (error?.status === 429) {
+      console.error('   Rate limit exceeded. Please try again later.');
+    } else if (error?.message) {
+      console.error(`   Error: ${error.message}`);
+    } else {
+      console.error('   Unable to connect to OpenAI. Please check your internet connection and try again.');
+    }
+    process.exit(1);
+  }
+
+  // Check again if another process has already written a valid key
+  if (existsSync(envPath)) {
+    try {
+      const envContent = readFileSync(envPath, 'utf-8');
+      const match = envContent.match(/OPENAI_API_KEY=(.+)/);
+      if (match && match[1]) {
+        const existingKey = match[1].trim();
+        // If the key in the file is the same or different but valid, we're good
+        if (existingKey === trimmedKey) {
+          console.log(`✅ API key already saved to ${envPath}\n`);
+          return;
+        }
+        // If another process wrote a different key, test it
+        const isValid = await testApiKey(existingKey);
+        if (isValid) {
+          console.log('✅ Another process has already configured a valid API key.\n');
+          return;
+        }
+      }
+    } catch (error) {
+      // If we can't read, continue to write
+    }
+  }
+
   // Create env directory if it doesn't exist
   const envDir = join(process.cwd(), 'env');
   try {
@@ -42,16 +127,34 @@ async function main() {
   }
 
   // Write to .env file in env directory
-  const envPath = join(envDir, '.env');
-  const envContent = `OPENAI_API_KEY=${apiKey.trim()}\n`;
+  const envContent = `OPENAI_API_KEY=${trimmedKey}\n`;
 
   try {
     writeFileSync(envPath, envContent, { flag: 'w' });
-    console.log(`\n✅ API key saved to ${envPath}`);
+    console.log(`✅ API key saved to ${envPath}`);
     console.log('⚠️  Make sure to add "env/" to your .gitignore file!\n');
   } catch (error) {
-    console.error('❌ Error writing to file:', error);
-    process.exit(1);
+    // If write fails (e.g., another process is writing), check if a valid key exists
+    if (existsSync(envPath)) {
+      try {
+        const envContent = readFileSync(envPath, 'utf-8');
+        const match = envContent.match(/OPENAI_API_KEY=(.+)/);
+        if (match && match[1]) {
+          const existingKey = match[1].trim();
+          const isValid = await testApiKey(existingKey);
+          if (isValid) {
+            console.log('✅ Another process has already configured a valid API key.\n');
+            return;
+          }
+        }
+      } catch (readError) {
+        // If we can't read, log the write error
+        console.error('⚠️  Warning: Could not write to file, but continuing...');
+        console.error('   Another process may have updated the file.\n');
+      }
+    } else {
+      console.error('⚠️  Warning: Could not write to file, but continuing...\n');
+    }
   }
 }
 
