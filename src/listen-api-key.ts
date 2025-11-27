@@ -54,32 +54,44 @@ export function setupApiKeyListener() {
       });
 
       // Also try to read from localStorage if available
+      console.log('[listen-api-key] 🔍 Checking localStorage for existing API key...');
       try {
         if (win.window.localStorage) {
+          console.log('[listen-api-key] ✅ localStorage is accessible');
           const storedKey = win.window.localStorage.getItem('openai_api_key');
           if (storedKey) {
-            console.log('📥 Found API key in localStorage');
+            console.log(`[listen-api-key] 📥 Found API key in localStorage (length: ${storedKey.length} chars)`);
+            console.log(`[listen-api-key] 📥 Key preview: ${storedKey.substring(0, 7)}...${storedKey.substring(storedKey.length - 4)}`);
             
             const envDir = join(process.cwd(), 'env');
             const envPath = join(envDir, '.env');
 
             if (!existsSync(envDir)) {
               mkdirSync(envDir, { recursive: true });
+              console.log('[listen-api-key] ✅ Created env directory');
             }
 
             const envContent = `OPENAI_API_KEY=${storedKey.trim()}\n`;
             writeFileSync(envPath, envContent, { flag: 'w' });
-            console.log('✅ API key from localStorage saved to env/.env file');
+            console.log('[listen-api-key] ✅ API key from localStorage saved to env/.env file');
+          } else {
+            console.log('[listen-api-key] ℹ️  No API key found in localStorage');
           }
+        } else {
+          console.log('[listen-api-key] ⚠️  localStorage is not accessible');
         }
-      } catch (error) {
+      } catch (error: any) {
         // Cross-origin restrictions may prevent localStorage access
-        console.log('ℹ️  Cannot access localStorage (cross-origin), will use postMessage');
+        console.log(`[listen-api-key] ❌ Cannot access localStorage: ${error.message}`);
+        console.log('[listen-api-key] ℹ️  Will rely on postMessage from parent window');
       }
+    } else {
+      console.log('[listen-api-key] ⚠️  window.addEventListener is not available');
     }
   } else {
-    console.log('ℹ️  Not in browser environment, API key listener not available');
+    console.log('[listen-api-key] ⚠️  Not in browser environment, API key listener not available');
   }
+  console.log('[listen-api-key] ✅ Listener setup complete');
 }
 
 // Auto-run when imported
