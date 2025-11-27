@@ -4,12 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "npm install && node --no-deprecation --import ts-node/esm src/setup-env.ts",
-    "setup:env": "node --no-deprecation --import ts-node/esm src/setup-env.ts",
-    "llm:sample1": "node --import ts-node/esm src/hello_world.ts"
+    "start": "npm install && tsx src/setup-env.ts",
+    "setup:env": "tsx src/setup-env.ts",
+    "llm:sample1": "tsx src/hello_world.ts"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
     "typescript": "~5.9.3"
   },
   "dependencies": {
