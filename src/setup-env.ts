@@ -136,22 +136,36 @@ async function main() {
     
     // Also save to localStorage for persistence across page reloads
     // In StackBlitz WebContainers, we need to use postMessage to communicate with parent window
-    console.log('\n🔍 Attempting to save API key to parent window\'s localStorage...');
+    console.log('\n[setup-env] ========================================');
+    console.log('[setup-env] 🔍 ATTEMPTING TO SAVE API KEY TO PARENT');
+    console.log('[setup-env] ========================================');
+    console.log('[setup-env] ⏰ Timestamp:', new Date().toISOString());
+    console.log('[setup-env] 🔍 Attempting to save API key to parent window\'s localStorage...');
     try {
       const global = globalThis as any;
+      console.log('[setup-env] 🔍 typeof globalThis:', typeof globalThis);
+      console.log('[setup-env] 🔍 typeof window:', typeof window);
       
       // In StackBlitz WebContainers, we're in a worker-like environment
       // We need to access the browser's window object differently
       let windowObj = null;
       
       // Try different ways to access the window object
+      console.log('[setup-env] 🔍 Trying to access window object...');
       if (typeof window !== 'undefined') {
         windowObj = window;
+        console.log('[setup-env] ✅ Found window via typeof window');
       } else if (global.window) {
         windowObj = global.window;
+        console.log('[setup-env] ✅ Found window via global.window');
       } else if (global.self && global.self.window) {
         windowObj = global.self.window;
+        console.log('[setup-env] ✅ Found window via global.self.window');
+      } else {
+        console.log('[setup-env] ⚠️  Could not find window object');
       }
+      
+      console.log('[setup-env] 🔍 windowObj:', windowObj ? 'Available' : 'Not available');
       
       if (windowObj) {
         // Try direct localStorage access first
@@ -174,23 +188,40 @@ async function main() {
         }
         
         // Try postMessage to parent window (for embedded StackBlitz)
+        console.log('[setup-env] 🔍 Checking for parent window...');
+        console.log('[setup-env] 🔍 windowObj.parent:', windowObj.parent ? 'Available' : 'Not available');
+        console.log('[setup-env] 🔍 windowObj.parent !== windowObj:', windowObj.parent !== windowObj);
+        
         if (windowObj.parent && windowObj.parent !== windowObj) {
           try {
-            console.log('   📤 Sending API key to parent window via postMessage...');
-            windowObj.parent.postMessage({
+            console.log('[setup-env] 📤 Sending API key to parent window via postMessage...');
+            const message = {
               type: 'SAVE_API_KEY',
               key: 'openai_api_key',
               value: trimmedKey
-            }, '*');
-            console.log('   ✅ API key sent to parent window for localStorage storage');
-            console.log('   ℹ️  Parent window (Mintlify) should save it to localStorage');
-            console.log('   ℹ️  This will persist across page reloads');
+            };
+            console.log('[setup-env] 📨 Message payload:', {
+              type: message.type,
+              key: message.key,
+              valueLength: message.value.length,
+              valuePreview: `${message.value.substring(0, 7)}...${message.value.substring(message.value.length - 4)}`
+            });
+            
+            windowObj.parent.postMessage(message, '*');
+            console.log('[setup-env] ✅ API key sent to parent window for localStorage storage');
+            console.log('[setup-env] ✅ postMessage sent to origin: * (any origin)');
+            console.log('[setup-env] ℹ️  Parent window (Mintlify) should save it to localStorage');
+            console.log('[setup-env] ℹ️  This will persist across page reloads');
           } catch (postError: any) {
-            console.log(`   ⚠️  postMessage failed: ${postError.message}`);
+            console.error('[setup-env] ❌ ERROR sending postMessage');
+            console.error('[setup-env] ❌ Error name:', postError?.name);
+            console.error('[setup-env] ❌ Error message:', postError?.message);
+            console.error('[setup-env] ❌ Error stack:', postError?.stack);
           }
         } else {
-          console.log('   ℹ️  No parent window available (running standalone, not embedded)');
-          console.log('   ℹ️  API key is saved to env/.env file and will work for this session');
+          console.log('[setup-env] ⚠️  No parent window available (running standalone, not embedded)');
+          console.log('[setup-env] ⚠️  windowObj.parent:', windowObj.parent);
+          console.log('[setup-env] ℹ️  API key is saved to env/.env file and will work for this session');
         }
       } else {
         console.log('   ⚠️  Cannot access window object in this environment');
