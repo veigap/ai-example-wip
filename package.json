@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "node --import ts-node/esm src/hello_world.ts"
+    "start": "npm instrall",
+    "llm:sample1": "node --import ts-node/esm src/hello_world.ts"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
