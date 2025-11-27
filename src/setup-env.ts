@@ -135,26 +135,46 @@ async function main() {
     console.log('⚠️  Make sure to add "env/" to your .gitignore file!\n');
     
     // Also save to localStorage for persistence across page reloads
+    console.log('\n🔍 Attempting to save API key to localStorage...');
     try {
       const global = globalThis as any;
+      console.log('   Checking for window.localStorage...');
+      
       if (global.window?.localStorage) {
-        global.window.localStorage.setItem('openai_api_key', trimmedKey);
-        console.log('✅ API key also saved to localStorage (will persist across page reloads)');
+        console.log('   ✅ localStorage is accessible');
+        try {
+          global.window.localStorage.setItem('openai_api_key', trimmedKey);
+          const verify = global.window.localStorage.getItem('openai_api_key');
+          if (verify === trimmedKey) {
+            console.log('   ✅ API key successfully saved to localStorage');
+            console.log('   ✅ Verified: Key can be read back from localStorage');
+          } else {
+            console.log('   ⚠️  Warning: Key saved but verification failed');
+          }
+        } catch (setError: any) {
+          console.log('   ❌ Failed to set localStorage:', setError.message);
+        }
       } else {
+        console.log('   ℹ️  localStorage not directly accessible, trying parent window...');
         // Try to access localStorage via postMessage to parent window
         if (global.window?.parent && global.window !== global.window.parent) {
+          console.log('   📤 Sending API key to parent window via postMessage...');
           global.window.parent.postMessage({
             type: 'SAVE_API_KEY',
             key: 'openai_api_key',
             value: trimmedKey
           }, '*');
-          console.log('✅ API key sent to parent window for localStorage storage');
+          console.log('   ✅ API key sent to parent window for localStorage storage');
+          console.log('   ℹ️  Parent window should save it to localStorage');
+        } else {
+          console.log('   ⚠️  No parent window available for postMessage');
         }
       }
-    } catch (localStorageError) {
+    } catch (localStorageError: any) {
       // localStorage might not be accessible (cross-origin), that's okay
-      console.log('ℹ️  Note: Could not save to localStorage (cross-origin restriction)');
-      console.log('   The API key is still saved to env/.env file and will work for this session.\n');
+      console.log('   ❌ Error accessing localStorage:', localStorageError.message);
+      console.log('   ℹ️  Note: Could not save to localStorage (cross-origin restriction)');
+      console.log('   ℹ️  The API key is still saved to env/.env file and will work for this session.\n');
     }
   } catch (error) {
     // If write fails (e.g., another process is writing), check if a valid key exists
