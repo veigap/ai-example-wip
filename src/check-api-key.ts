@@ -17,22 +17,38 @@ async function checkAndSetApiKey() {
     let apiKey: string | null = null;
     
     console.log('   Checking if window.localStorage is available...');
-    if (global.window?.localStorage) {
+    
+    // Try different ways to access window object in StackBlitz WebContainers
+    let windowObj = null;
+    if (typeof window !== 'undefined') {
+      windowObj = window;
+    } else if (global.window) {
+      windowObj = global.window;
+    } else if (global.self && global.self.window) {
+      windowObj = global.self.window;
+    }
+    
+    if (windowObj?.localStorage) {
       console.log('   ✅ localStorage is accessible');
       try {
-        apiKey = global.window.localStorage.getItem('openai_api_key');
+        apiKey = windowObj.localStorage.getItem('openai_api_key');
         if (apiKey) {
           console.log(`   ✅ Found API key in localStorage (length: ${apiKey.length} chars)`);
           console.log(`   ✅ Key preview: ${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}`);
         } else {
           console.log('   ℹ️  No API key found in localStorage');
+          console.log('   ℹ️  Will wait for parent window to send it via postMessage');
         }
       } catch (e: any) {
-        console.log('   ❌ Error reading from localStorage:', e.message);
+        console.log(`   ❌ Error reading from localStorage: ${e.message}`);
         console.log('   ℹ️  Cross-origin restrictions may prevent access');
+        console.log('   ℹ️  Will rely on postMessage from parent window');
       }
     } else {
       console.log('   ⚠️  localStorage not accessible (window.localStorage is undefined)');
+      console.log('   ℹ️  This is normal in StackBlitz WebContainers');
+      console.log('   ℹ️  Will rely on postMessage from parent window (Mintlify)');
+      console.log('   ℹ️  The parent window will send the key when the iframe loads');
     }
 
     // Also check if .env file already exists and has a valid key

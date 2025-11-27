@@ -135,46 +135,75 @@ async function main() {
     console.log('⚠️  Make sure to add "env/" to your .gitignore file!\n');
     
     // Also save to localStorage for persistence across page reloads
-    console.log('\n🔍 Attempting to save API key to localStorage...');
+    // In StackBlitz WebContainers, we need to use postMessage to communicate with parent window
+    console.log('\n🔍 Attempting to save API key to parent window\'s localStorage...');
     try {
       const global = globalThis as any;
-      console.log('   Checking for window.localStorage...');
       
-      if (global.window?.localStorage) {
-        console.log('   ✅ localStorage is accessible');
-        try {
-          global.window.localStorage.setItem('openai_api_key', trimmedKey);
-          const verify = global.window.localStorage.getItem('openai_api_key');
-          if (verify === trimmedKey) {
-            console.log('   ✅ API key successfully saved to localStorage');
-            console.log('   ✅ Verified: Key can be read back from localStorage');
-          } else {
-            console.log('   ⚠️  Warning: Key saved but verification failed');
+      // In StackBlitz WebContainers, we're in a worker-like environment
+      // We need to access the browser's window object differently
+      let windowObj = null;
+      
+      // Try different ways to access the window object
+      if (typeof window !== 'undefined') {
+        windowObj = window;
+      } else if (global.window) {
+        windowObj = global.window;
+      } else if (global.self && global.self.window) {
+        windowObj = global.self.window;
+      }
+      
+      if (windowObj) {
+        // Try direct localStorage access first
+        if (windowObj.localStorage) {
+          try {
+            windowObj.localStorage.setItem('openai_api_key', trimmedKey);
+            const verify = windowObj.localStorage.getItem('openai_api_key');
+            if (verify === trimmedKey) {
+              console.log('   ✅ API key successfully saved to localStorage');
+              console.log('   ✅ Verified: Key can be read back from localStorage');
+            } else {
+              console.log('   ⚠️  Warning: Key saved but verification failed, trying postMessage...');
+              // Fall through to postMessage
+            }
+          } catch (setError: any) {
+            console.log(`   ⚠️  Direct localStorage access failed: ${setError.message}`);
+            console.log('   📤 Falling back to postMessage...');
+            // Fall through to postMessage
           }
-        } catch (setError: any) {
-          console.log('   ❌ Failed to set localStorage:', setError.message);
+        }
+        
+        // Try postMessage to parent window (for embedded StackBlitz)
+        if (windowObj.parent && windowObj.parent !== windowObj) {
+          try {
+            console.log('   📤 Sending API key to parent window via postMessage...');
+            windowObj.parent.postMessage({
+              type: 'SAVE_API_KEY',
+              key: 'openai_api_key',
+              value: trimmedKey
+            }, '*');
+            console.log('   ✅ API key sent to parent window for localStorage storage');
+            console.log('   ℹ️  Parent window (Mintlify) should save it to localStorage');
+            console.log('   ℹ️  This will persist across page reloads');
+          } catch (postError: any) {
+            console.log(`   ⚠️  postMessage failed: ${postError.message}`);
+          }
+        } else {
+          console.log('   ℹ️  No parent window available (running standalone, not embedded)');
+          console.log('   ℹ️  API key is saved to env/.env file and will work for this session');
         }
       } else {
-        console.log('   ℹ️  localStorage not directly accessible, trying parent window...');
-        // Try to access localStorage via postMessage to parent window
-        if (global.window?.parent && global.window !== global.window.parent) {
-          console.log('   📤 Sending API key to parent window via postMessage...');
-          global.window.parent.postMessage({
-            type: 'SAVE_API_KEY',
-            key: 'openai_api_key',
-            value: trimmedKey
-          }, '*');
-          console.log('   ✅ API key sent to parent window for localStorage storage');
-          console.log('   ℹ️  Parent window should save it to localStorage');
-        } else {
-          console.log('   ⚠️  No parent window available for postMessage');
-        }
+        console.log('   ⚠️  Cannot access window object in this environment');
+        console.log('   ℹ️  This is normal in StackBlitz WebContainers');
+        console.log('   ℹ️  The API key is saved to env/.env file and will work for this session');
+        console.log('   ℹ️  For persistence across reloads, the parent window will send the key back via postMessage');
       }
     } catch (localStorageError: any) {
       // localStorage might not be accessible (cross-origin), that's okay
-      console.log('   ❌ Error accessing localStorage:', localStorageError.message);
-      console.log('   ℹ️  Note: Could not save to localStorage (cross-origin restriction)');
-      console.log('   ℹ️  The API key is still saved to env/.env file and will work for this session.\n');
+      console.log(`   ⚠️  Error: ${localStorageError.message}`);
+      console.log('   ℹ️  Note: Could not save to localStorage (this is normal in StackBlitz)');
+      console.log('   ℹ️  The API key is still saved to env/.env file and will work for this session.');
+      console.log('   ℹ️  On page reload, the parent window will send the key back via postMessage.\n');
     }
   } catch (error) {
     // If write fails (e.g., another process is writing), check if a valid key exists
