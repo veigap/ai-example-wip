@@ -97,3 +97,15 @@ export function setupApiKeyListener() {
 // Auto-run when imported
 setupApiKeyListener();
 
+// Also sync API key from .env to parent when listener is set up
+// This ensures the parent window has the key even if it wasn't sent via postMessage
+// Delay sync to ensure window is ready and avoid circular imports
+setTimeout(async () => {
+  try {
+    const { syncApiKeyToParent } = await import('./sync-api-key-to-parent');
+    syncApiKeyToParent();
+  } catch (error) {
+    // Silently fail - sync is optional
+  }
+}, 2000);
+

@@ -194,9 +194,12 @@ async function main() {
         }
       } else {
         console.log('   ⚠️  Cannot access window object in this environment');
-        console.log('   ℹ️  This is normal in StackBlitz WebContainers');
+        console.log('   ℹ️  This is normal in StackBlitz WebContainers terminal');
         console.log('   ℹ️  The API key is saved to env/.env file and will work for this session');
-        console.log('   ℹ️  For persistence across reloads, the parent window will send the key back via postMessage');
+        console.log('   ℹ️  For persistence across reloads:');
+        console.log('      - The parent window (Mintlify) will send the key back via postMessage on reload');
+        console.log('      - OR run: import("./src/sync-api-key-to-parent") to sync manually');
+        console.log('      - The listen-api-key.ts script will also sync it automatically when loaded');
       }
     } catch (localStorageError: any) {
       // localStorage might not be accessible (cross-origin), that's okay
