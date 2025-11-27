@@ -1,4 +1,9 @@
 import OpenAI from 'openai';
+import { config } from 'dotenv';
+import { join } from 'path';
+
+// Load environment variables from env/.env
+config({ path: join(process.cwd(), 'env', '.env') });
 
 async function main() {
   const client = new OpenAI({

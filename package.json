@@ -4,16 +4,17 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "npm instrall",
+    "start": "npm install && node --no-deprecation --import ts-node/esm src/setup-env.ts",
+    "setup:env": "node --no-deprecation --import ts-node/esm src/setup-env.ts",
     "llm:sample1": "node --import ts-node/esm src/hello_world.ts"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
-    "typescript": "~5.9.3",
-    "vite": "^7.2.4"
+    "typescript": "~5.9.3"
   },
   "dependencies": {
     "@types/node": "^24.10.1",
+    "dotenv": "^17.2.3",
     "openai": "^6.9.1"
   }
 }
