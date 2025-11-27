@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import { config } from 'dotenv';
 import { join } from 'path';
+// Check for API key from localStorage on startup (runs before main code)
+import './check-api-key';
 
 // Load environment variables from env/.env
 config({ path: join(process.cwd(), 'env', '.env') });

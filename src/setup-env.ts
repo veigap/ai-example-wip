@@ -133,6 +133,29 @@ async function main() {
     writeFileSync(envPath, envContent, { flag: 'w' });
     console.log(`✅ API key saved to ${envPath}`);
     console.log('⚠️  Make sure to add "env/" to your .gitignore file!\n');
+    
+    // Also save to localStorage for persistence across page reloads
+    try {
+      const global = globalThis as any;
+      if (global.window?.localStorage) {
+        global.window.localStorage.setItem('openai_api_key', trimmedKey);
+        console.log('✅ API key also saved to localStorage (will persist across page reloads)');
+      } else {
+        // Try to access localStorage via postMessage to parent window
+        if (global.window?.parent && global.window !== global.window.parent) {
+          global.window.parent.postMessage({
+            type: 'SAVE_API_KEY',
+            key: 'openai_api_key',
+            value: trimmedKey
+          }, '*');
+          console.log('✅ API key sent to parent window for localStorage storage');
+        }
+      }
+    } catch (localStorageError) {
+      // localStorage might not be accessible (cross-origin), that's okay
+      console.log('ℹ️  Note: Could not save to localStorage (cross-origin restriction)');
+      console.log('   The API key is still saved to env/.env file and will work for this session.\n');
+    }
   } catch (error) {
     // If write fails (e.g., another process is writing), check if a valid key exists
     if (existsSync(envPath)) {
