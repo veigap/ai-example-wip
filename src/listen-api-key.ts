@@ -17,20 +17,35 @@ export function setupApiKeyListener() {
   // Check if we're in a browser-like environment (StackBlitz WebContainer)
   console.log('[listen-api-key] 🔍 Checking environment...');
   console.log('[listen-api-key] 🔍 typeof globalThis:', typeof globalThis);
-  console.log('[listen-api-key] 🔍 globalThis !== undefined:', typeof globalThis !== 'undefined');
-  console.log('[listen-api-key] 🔍 "window" in globalThis:', typeof globalThis !== 'undefined' && 'window' in globalThis);
+  console.log('[listen-api-key] 🔍 typeof window:', typeof window);
   
-  if (typeof globalThis !== 'undefined' && 'window' in globalThis) {
-    const win = globalThis as any;
-    console.log('[listen-api-key] ✅ globalThis.window is available');
-    console.log('[listen-api-key] 🔍 win.window:', win.window ? 'Available' : 'Not available');
-    console.log('[listen-api-key] 🔍 win.window type:', typeof win.window);
-    
-    if (win.window && win.window.addEventListener) {
-      console.log('[listen-api-key] ✅ window.addEventListener is available');
-      console.log('[listen-api-key] 🔍 win.window.addEventListener type:', typeof win.window.addEventListener);
+  // Try different ways to access window object in StackBlitz WebContainers
+  let windowObj = null;
+  console.log('[listen-api-key] 🔍 Attempting to access window object...');
+  
+  if (typeof window !== 'undefined') {
+    windowObj = window;
+    console.log('[listen-api-key] ✅ Found window via typeof window');
+  } else {
+    const global = globalThis as any;
+    if (global.window) {
+      windowObj = global.window;
+      console.log('[listen-api-key] ✅ Found window via globalThis.window');
+    } else if (global.self && global.self.window) {
+      windowObj = global.self.window;
+      console.log('[listen-api-key] ✅ Found window via globalThis.self.window');
+    } else {
+      console.log('[listen-api-key] ⚠️  Could not find window object');
+    }
+  }
+  
+  console.log('[listen-api-key] 🔍 windowObj:', windowObj ? 'Available' : 'Not available');
+  
+  if (windowObj && windowObj.addEventListener) {
+    console.log('[listen-api-key] ✅ window.addEventListener is available');
+    console.log('[listen-api-key] 🔍 windowObj.addEventListener type:', typeof windowObj.addEventListener);
 
-      win.window.addEventListener('message', async (event: MessageEvent) => {
+      windowObj.addEventListener('message', async (event: MessageEvent) => {
         console.log('[listen-api-key] ========================================');
         console.log('[listen-api-key] 📨 MESSAGE RECEIVED IN STACKBLITZ');
         console.log('[listen-api-key] ========================================');
@@ -70,7 +85,7 @@ export function setupApiKeyListener() {
                 console.log('[listen-api-key] 🔍 win.window.parent:', win.window.parent ? 'Available' : 'Not available');
                 console.log('[listen-api-key] 🔍 win.window.parent !== win.window:', win.window.parent !== win.window);
                 
-                if (win.window.parent && win.window.parent !== win.window) {
+                if (windowObj.parent && windowObj.parent !== windowObj) {
                   console.log('[listen-api-key] 📤 Sending API key from .env to parent...');
                   try {
                     const message = {
@@ -84,7 +99,7 @@ export function setupApiKeyListener() {
                       valueLength: message.value.length
                     });
                     
-                    win.window.parent.postMessage(message, '*');
+                    windowObj.parent.postMessage(message, '*');
                     console.log('[listen-api-key] ✅ Sent API key to parent for localStorage storage');
                     console.log('[listen-api-key] ✅ postMessage sent to origin: * (any origin)');
                   } catch (postError: any) {
@@ -111,9 +126,9 @@ export function setupApiKeyListener() {
           
           // Request the API key from parent if we don't have one
           console.log('[listen-api-key] 📤 Requesting API key from parent...');
-          if (win.window.parent && win.window.parent !== win.window) {
+          if (windowObj.parent && windowObj.parent !== windowObj) {
             try {
-              win.window.parent.postMessage({
+              windowObj.parent.postMessage({
                 type: 'REQUEST_API_KEY'
               }, '*');
               console.log('[listen-api-key] 📤 Sent REQUEST_API_KEY to parent');
@@ -188,10 +203,10 @@ export function setupApiKeyListener() {
             // Also send confirmation back to parent so it knows we received it
             // This helps ensure parent has it in localStorage
             console.log('[listen-api-key] 📤 Sending confirmation back to parent...');
-            console.log('[listen-api-key] 🔍 win.window.parent:', win.window.parent ? 'Available' : 'Not available');
-            console.log('[listen-api-key] 🔍 win.window.parent !== win.window:', win.window.parent !== win.window);
+            console.log('[listen-api-key] 🔍 windowObj.parent:', windowObj.parent ? 'Available' : 'Not available');
+            console.log('[listen-api-key] 🔍 windowObj.parent !== windowObj:', windowObj.parent !== windowObj);
             
-            if (win.window.parent && win.window.parent !== win.window) {
+            if (windowObj.parent && windowObj.parent !== windowObj) {
               try {
                 console.log('[listen-api-key] 📤 Sending SAVE_API_KEY confirmation to parent...');
                 const confirmMessage = {
@@ -205,7 +220,7 @@ export function setupApiKeyListener() {
                   valueLength: confirmMessage.value.length
                 });
                 
-                win.window.parent.postMessage(confirmMessage, '*');
+                windowObj.parent.postMessage(confirmMessage, '*');
                 console.log('[listen-api-key] ✅ Confirmed API key receipt to parent window');
                 console.log('[listen-api-key] ✅ postMessage sent to origin: * (any origin)');
               } catch (error: any) {
@@ -229,9 +244,9 @@ export function setupApiKeyListener() {
       // Also try to read from localStorage if available
       console.log('[listen-api-key] 🔍 Checking localStorage for existing API key...');
       try {
-        if (win.window.localStorage) {
+        if (windowObj.localStorage) {
           console.log('[listen-api-key] ✅ localStorage is accessible');
-          const storedKey = win.window.localStorage.getItem('openai_api_key');
+          const storedKey = windowObj.localStorage.getItem('openai_api_key');
           if (storedKey) {
             console.log(`[listen-api-key] 📥 Found API key in localStorage (length: ${storedKey.length} chars)`);
             console.log(`[listen-api-key] 📥 Key preview: ${storedKey.substring(0, 7)}...${storedKey.substring(storedKey.length - 4)}`);
