@@ -4,8 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "npm install",
-    "llm:sample1": "tsx src/hello_world.ts"
+    "start": "node startup.js"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
