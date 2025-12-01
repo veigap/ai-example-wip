@@ -4,10 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "npm install && tsx src/setup-env.ts",
-    "setup:env": "tsx src/setup-env.ts",
-    "llm:sample1": "tsx src/check-api-key.ts && tsx src/hello_world.ts",
-    "prellm:sample1": "tsx src/check-api-key.ts"
+    "start": "npm install",
+    "llm:sample1": "tsx src/hello_world.ts"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
