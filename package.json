@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "node startup.js"
+    "start": "node .api-tutorial/run.js"
   },
   "devDependencies": {
     "ts-node": "^10.9.2",
