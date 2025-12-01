@@ -176,18 +176,7 @@ const askRunAgain = (): Promise<void> => {
 
 // Main function
 const main = async (): Promise<void> => {
-  // Print welcome message
-  console.log(colors.bright + colors.cyan + '\n╔════════════════════════════════════════╗');
-  console.log('║   AI Tutorial Interactive Runner   ║');
-  console.log('╚════════════════════════════════════════╝' + colors.reset);
-  console.log(colors.dim + '\nThis script will:' + colors.reset);
-  console.log(colors.dim + '  1. Install dependencies');
-  console.log('  2. Wait for the tutorial configuration');
-  console.log('  3. Execute the tutorial example\n' + colors.reset);
-  
   try {
-    execSync('npm install', { stdio: 'inherit' });
-    
     await waitForConfigFile();
     
     const filePath = readConfigFile();
